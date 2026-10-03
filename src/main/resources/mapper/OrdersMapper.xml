@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mall.mapper.OrdersMapper">
+
+    <!-- 管理端订单分页：status + order_time 命中联合索引 idx_status_order_time -->
+    <select id="pageQuery" resultType="com.mall.pojo.entity.Orders">
+        SELECT * FROM orders
+        <where>
+            <if test="q.number != null and q.number != ''">
+                AND number = #{q.number}
+            </if>
+            <if test="q.status != null">
+                AND status = #{q.status}
+            </if>
+            <if test="q.beginTime != null">
+                AND order_time &gt;= #{q.beginTime}
+            </if>
+            <if test="q.endTime != null">
+                AND order_time &lt; DATE_ADD(#{q.endTime}, INTERVAL 1 DAY)
+            </if>
+        </where>
+        ORDER BY order_time DESC
+    </select>
+</mapper>

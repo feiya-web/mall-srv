@@ -1,0 +1,1537 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "网上商城系统 API",
+    "description": "Spring Boot 2.7 + MyBatis-Plus + MySQL + Redis + JWT。管理端前缀 /admin，用户端前缀 /user；除登录接口外均需在 Header 携带 token。本文件由 tools/export_openapi.py 从 Controller 源码自动提取生成，与实现同源。",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "本地环境"
+    }
+  ],
+  "tags": [
+    {
+      "name": "缓存监控",
+      "description": "Cache Aside 缓存命中率统计"
+    },
+    {
+      "name": "分类管理",
+      "description": "商品分类与组合套装分类的增删改查"
+    },
+    {
+      "name": "商品管理",
+      "description": "商品及喜好维护、上下架，变更后清理 Cache Aside 缓存"
+    },
+    {
+      "name": "员工管理",
+      "description": "管理端员工登录、信息查询、新增/编辑、启用禁用与分页条件查询"
+    },
+    {
+      "name": "订单管理",
+      "description": "订单分页、发货/取消订单/配送/完成，全部状态流转受订单状态机约束"
+    },
+    {
+      "name": "组合套装管理",
+      "description": "组合套装与组合套装明细维护、上下架"
+    },
+    {
+      "name": "购物车",
+      "description": "购物车加购、减少、列表与清空"
+    },
+    {
+      "name": "商品浏览",
+      "description": "按分类浏览商品与组合套装（高频读，走 Cache Aside 缓存）"
+    },
+    {
+      "name": "用户登录",
+      "description": "用户端登录，签发用户 JWT"
+    },
+    {
+      "name": "用户订单",
+      "description": "下单（事务+幂等）、模拟支付、取消、历史订单与详情"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "token",
+        "description": "登录接口返回的 JWT，放在请求头 token 字段"
+      }
+    },
+    "schemas": {
+      "LoginDTO": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "zhangsan"
+          },
+          "password": {
+            "type": "string",
+            "example": "123456"
+          }
+        }
+      },
+      "ShoppingCartDTO": {
+        "type": "object",
+        "properties": {
+          "dishId": {
+            "type": "integer",
+            "example": 3
+          },
+          "setmealId": {
+            "type": "integer",
+            "example": 1
+          },
+          "dishFlavor": {
+            "type": "string",
+            "example": "微辣"
+          }
+        }
+      },
+      "OrdersSubmitDTO": {
+        "type": "object",
+        "required": [
+          "consignee",
+          "phone",
+          "address",
+          "cartItemIds"
+        ],
+        "properties": {
+          "consignee": {
+            "type": "string",
+            "example": "张三"
+          },
+          "phone": {
+            "type": "string",
+            "example": "13900000001"
+          },
+          "address": {
+            "type": "string",
+            "example": "上海市嘉定区1号"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "payMethod": {
+            "type": "integer",
+            "example": 1
+          },
+          "cartItemIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "example": "手机通讯"
+          },
+          "type": {
+            "type": "integer",
+            "description": "1商品分类 2组合套装分类",
+            "example": 1
+          },
+          "sort": {
+            "type": "integer",
+            "example": 10
+          }
+        }
+      },
+      "DishDTO": {
+        "type": "object",
+        "required": [
+          "name",
+          "categoryId",
+          "price"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "example": "机械键盘"
+          },
+          "categoryId": {
+            "type": "integer",
+            "example": 2
+          },
+          "price": {
+            "type": "number",
+            "example": 32.0
+          },
+          "image": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "description": "0停售 1起售",
+            "example": 1
+          },
+          "flavors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "SetmealDTO": {
+        "type": "object",
+        "required": [
+          "name",
+          "categoryId",
+          "price"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "example": "双人组合套装A"
+          },
+          "categoryId": {
+            "type": "integer",
+            "example": 6
+          },
+          "price": {
+            "type": "number",
+            "example": 68.0
+          },
+          "image": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "example": 1
+          },
+          "setmealDishes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "EmployeeDTO": {
+        "type": "object",
+        "required": [
+          "name",
+          "username",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "张小厨"
+          },
+          "username": {
+            "type": "string",
+            "example": "kitchen01"
+          },
+          "password": {
+            "type": "string",
+            "example": "Test@12345"
+          },
+          "phone": {
+            "type": "string",
+            "description": "选填，^1[3-9]\\d{9}$",
+            "example": "13900001111"
+          }
+        }
+      },
+      "EmployeeUpdateDTO": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "张小厨"
+          },
+          "phone": {
+            "type": "string",
+            "description": "选填，^1[3-9]\\d{9}$",
+            "example": "13900001111"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "token": []
+    }
+  ],
+  "paths": {
+    "/admin/cache/stats": {
+      "get": {
+        "tags": [
+          "缓存监控"
+        ],
+        "summary": "stats",
+        "operationId": "CacheController_stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/category": {
+      "post": {
+        "tags": [
+          "分类管理"
+        ],
+        "summary": "save",
+        "operationId": "CategoryController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Category"
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "分类管理"
+        ],
+        "summary": "update",
+        "operationId": "CategoryController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Category"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "分类管理"
+        ],
+        "summary": "deleteById",
+        "operationId": "CategoryController_deleteById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/category/list": {
+      "get": {
+        "tags": [
+          "分类管理"
+        ],
+        "summary": "list",
+        "operationId": "CategoryController_list",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/category/page": {
+      "get": {
+        "tags": [
+          "分类管理"
+        ],
+        "summary": "page",
+        "operationId": "CategoryController_page",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/dish": {
+      "post": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "save",
+        "operationId": "DishController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DishDTO"
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "update",
+        "operationId": "DishController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DishDTO"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "deleteBatch",
+        "operationId": "DishController_deleteBatch",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/dish/list": {
+      "get": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "listByCategoryId",
+        "operationId": "DishController_listByCategoryId",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/dish/page": {
+      "get": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "page",
+        "operationId": "DishController_page",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/dish/status/{status}": {
+      "post": {
+        "tags": [
+          "商品管理"
+        ],
+        "summary": "startOrStop",
+        "operationId": "DishController_startOrStop",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/employee": {
+      "post": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "save",
+        "operationId": "EmployeeController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeDTO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/employee/login": {
+      "post": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "login",
+        "operationId": "EmployeeController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDTO"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/admin/employee/page": {
+      "get": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "page",
+        "operationId": "EmployeeController_page",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/employee/{id}": {
+      "put": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "update",
+        "operationId": "EmployeeController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeeUpdateDTO"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "getById",
+        "operationId": "EmployeeController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/employee/{id}/status/{status}": {
+      "put": {
+        "tags": [
+          "员工管理"
+        ],
+        "summary": "startOrStop",
+        "operationId": "EmployeeController_startOrStop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/accept/{id}": {
+      "put": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "accept",
+        "operationId": "OrderController_accept",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/complete/{id}": {
+      "put": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "complete",
+        "operationId": "OrderController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/delivery/{id}": {
+      "put": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "delivery",
+        "operationId": "OrderController_delivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/details/{id}": {
+      "get": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "details",
+        "operationId": "OrderController_details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/page": {
+      "get": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "page",
+        "operationId": "OrderController_page",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "beginTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/reject/{id}": {
+      "put": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "reject",
+        "operationId": "OrderController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/order/statistics": {
+      "get": {
+        "tags": [
+          "订单管理"
+        ],
+        "summary": "statistics",
+        "operationId": "OrderController_statistics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/setmeal": {
+      "post": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "save",
+        "operationId": "SetmealController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetmealDTO"
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "update",
+        "operationId": "SetmealController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetmealDTO"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "deleteBatch",
+        "operationId": "SetmealController_deleteBatch",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/setmeal/page": {
+      "get": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "page",
+        "operationId": "SetmealController_page",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/setmeal/status/{status}": {
+      "post": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "startOrStop",
+        "operationId": "SetmealController_startOrStop",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/admin/setmeal/{id}": {
+      "get": {
+        "tags": [
+          "组合套装管理"
+        ],
+        "summary": "getById",
+        "operationId": "SetmealController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/dish/list": {
+      "get": {
+        "tags": [
+          "商品浏览"
+        ],
+        "summary": "list",
+        "operationId": "UserDishController_list",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/login": {
+      "post": {
+        "tags": [
+          "用户登录"
+        ],
+        "summary": "login",
+        "operationId": "UserLoginController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDTO"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/user/order/cancel/{id}": {
+      "put": {
+        "tags": [
+          "用户订单"
+        ],
+        "summary": "cancel",
+        "operationId": "UserOrderController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/order/history": {
+      "get": {
+        "tags": [
+          "用户订单"
+        ],
+        "summary": "history",
+        "operationId": "UserOrderController_history",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/order/payment/{orderNumber}": {
+      "put": {
+        "tags": [
+          "用户订单"
+        ],
+        "summary": "paySuccess",
+        "operationId": "UserOrderController_paySuccess",
+        "parameters": [
+          {
+            "name": "orderNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/order/submit": {
+      "post": {
+        "tags": [
+          "用户订单"
+        ],
+        "summary": "submit",
+        "operationId": "UserOrderController_submit",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrdersSubmitDTO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/order/{id}": {
+      "get": {
+        "tags": [
+          "用户订单"
+        ],
+        "summary": "details",
+        "operationId": "UserOrderController_details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/setmeal/list": {
+      "get": {
+        "tags": [
+          "商品浏览"
+        ],
+        "summary": "listSetmeal",
+        "operationId": "UserDishController_listSetmeal",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/setmeal/{id}": {
+      "get": {
+        "tags": [
+          "商品浏览"
+        ],
+        "summary": "getById",
+        "operationId": "UserDishController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/shoppingCart/add": {
+      "post": {
+        "tags": [
+          "购物车"
+        ],
+        "summary": "add",
+        "operationId": "ShoppingCartController_add",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingCartDTO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/shoppingCart/clean": {
+      "delete": {
+        "tags": [
+          "购物车"
+        ],
+        "summary": "clean",
+        "operationId": "ShoppingCartController_clean",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/shoppingCart/list": {
+      "get": {
+        "tags": [
+          "购物车"
+        ],
+        "summary": "list",
+        "operationId": "ShoppingCartController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/user/shoppingCart/sub": {
+      "post": {
+        "tags": [
+          "购物车"
+        ],
+        "summary": "sub",
+        "operationId": "ShoppingCartController_sub",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingCartDTO"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

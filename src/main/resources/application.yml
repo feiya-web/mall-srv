@@ -1,0 +1,83 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mall-order
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 下方 ${} 为环境变量注入，冒号后是本地开发默认值。
+    # 部署到其他环境时通过环境变量覆盖，不要把真实密码写进仓库。
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/mall_order?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:123456}
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:123456}
+    database: 0
+  # 订单超时取消依赖 RabbitMQ：延迟队列 + 死信路由（见 mq/OrderMQConfig）。
+  # 本机没装 RabbitMQ 时用 --mall.order.timeout-enabled=false 关掉消费者即可，
+  # 其它功能（登录/购物车/订单）不受影响。
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    # 投递失败不阻塞业务（producer 内部兜住），但要把重试次数压低，避免日志刷屏
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        # 消费失败（这里只有业务异常，理论上已被 CAS 幂等兜住）重试 3 次仍失败则进死信
+        retry:
+          enabled: true
+          max-attempts: 3
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+mall:
+  jwt:
+    # JWT 签名密钥（长度 >= 32 字节）。默认值仅供本地开发，
+    # 正式部署必须通过 JWT_ADMIN_SECRET / JWT_USER_SECRET 环境变量注入独立密钥。
+    admin-secret: ${JWT_ADMIN_SECRET:mall-order-admin-jwt-secret-key-0123456789abcdef}
+    admin-ttl: 7200000
+    admin-token-name: token
+    # 用户端 JWT 配置
+    user-secret: ${JWT_USER_SECRET:mall-order-user-jwt-secret-key-0123456789abcdef00}
+    user-ttl: 7200000
+    user-token-name: token
+  order:
+    # 未支付订单多久之后自动取消（毫秒），默认 15 分钟。
+    # 想快速验证超时取消，把它调小（如 10000 = 10 秒）重启即可。
+    timeout-ms: ${MALL_ORDER_TIMEOUT_MS:900000}
+    # 超时消费者开关；本机没装 RabbitMQ 时用 --mall.order.timeout-enabled=false 关掉
+    timeout-enabled: ${MALL_ORDER_TIMEOUT_ENABLED:true}
+
+logging:
+  level:
+    com.mall: info
+    # MyBatis 通过 SLF4J 打 SQL 时，logger 名 = mapper 接口全限定名，且级别为 DEBUG。
+    # 不单独开这一行，SQL 会被上面的 com.mall: info 挡掉（换个 log-impl 等于白改）。
+    com.mall.mapper: debug
+  # 关键：日志同时落磁盘。否则线上/复现时出过一次的故障在控制台滚屏后就再也查不到，
+  # 排障只能靠数据库反推（本项目就吃过这个亏）。
+  file:
+    name: logs/mall-order.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 200MB

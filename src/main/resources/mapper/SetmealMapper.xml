@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mall.mapper.SetmealMapper">
+
+    <select id="pageQuery" resultType="com.mall.pojo.vo.SetmealVO">
+        SELECT s.id, s.name, s.category_id, s.price, s.image, s.description,
+               s.status, s.update_time, c.name AS category_name
+        FROM setmeal s
+        LEFT JOIN category c ON s.category_id = c.id
+        <where>
+            <if test="name != null and name != ''">
+                AND s.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND s.category_id = #{categoryId}
+            </if>
+            <if test="status != null">
+                AND s.status = #{status}
+            </if>
+        </where>
+        ORDER BY s.update_time DESC
+    </select>
+</mapper>
